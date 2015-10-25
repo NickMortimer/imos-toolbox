@@ -275,6 +275,7 @@ function mainWindow(...
   %set uimenu
   hToolsMenu                        = uimenu(fig, 'label', 'Tools');
   if strcmpi(mode, 'timeseries')
+      hToolsLinePressDiffs          = uimenu(hToolsMenu, 'label', 'Plot Pressure differences');
       hToolsLineDepth               = uimenu(hToolsMenu, 'label', 'Line plot mooring''s depths');
       hToolsLineDepthNonQC          = uimenu(hToolsLineDepth, 'label', 'non QC');
       hToolsLineDepthQC             = uimenu(hToolsLineDepth, 'label', 'QC');
@@ -289,6 +290,7 @@ function mainWindow(...
       hToolsScatter2DCommonVarQC    = uimenu(hToolsScatter2DCommonVar, 'label', 'QC');
       
       %set menu callbacks
+      set(hToolsLinePressDiffs,         'callBack', {@displayLinePressDiffs, false});
       set(hToolsLineDepthNonQC,         'callBack', {@displayLineMooringDepth, false});
       set(hToolsLineDepthQC,            'callBack', {@displayLineMooringDepth, true});
       set(hToolsLineCommonVarNonQC,     'callBack', {@displayLineMooringVar, false});
@@ -460,8 +462,23 @@ function mainWindow(...
     end
   end
 
-  %% Menu callback
-  function displayLineMooringDepth(source,ev, isQC)
+%% Menu callback
+    function displayLinePressDiffs(source,ev, isQC)
+        %DISPLAYLINEMOORINGDEPTH Opens a new window where all the nominal depths and
+        %actual/computed depths from intruments on the mooring are line-plotted.
+        %
+        %check for pres_rel
+        iPRel = getVar(sample_data{sampleMenu.Value}.variables, 'PRES_REL');
+        if iPRel == 0
+            disp(['No pressure data for ' char(sampleMenu.String(sampleMenu.Value))])
+            return
+        end
+
+        lineMooringPresDiffs(sample_data, sampleMenu, isQC, false, '');
+        
+    end
+
+    function displayLineMooringDepth(source,ev, isQC)
   %DISPLAYLINEMOORINGDEPTH Opens a new window where all the nominal depths and
   %actual/computed depths from intruments on the mooring are line-plotted.
   %
