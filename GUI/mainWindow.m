@@ -276,6 +276,7 @@ function mainWindow(...
   hToolsMenu                        = uimenu(fig, 'label', 'Tools');
   if strcmpi(mode, 'timeseries')
       hToolsLinePressDiffs          = uimenu(hToolsMenu, 'label', 'Plot Pressure differences');
+      hToolsScatterPlannedDeps      = uimenu(hToolsMenu, 'label', 'Check measured against planned Depths');
       hToolsLineDepth               = uimenu(hToolsMenu, 'label', 'Line plot mooring''s depths');
       hToolsLineDepthNonQC          = uimenu(hToolsLineDepth, 'label', 'non QC');
       hToolsLineDepthQC             = uimenu(hToolsLineDepth, 'label', 'QC');
@@ -291,6 +292,7 @@ function mainWindow(...
       
       %set menu callbacks
       set(hToolsLinePressDiffs,         'callBack', {@displayLinePressDiffs, false});
+      set(hToolsScatterPlannedDeps,     'callBack', {@displayScatterPlannedDeps, false});
       set(hToolsLineDepthNonQC,         'callBack', {@displayLineMooringDepth, false});
       set(hToolsLineDepthQC,            'callBack', {@displayLineMooringDepth, true});
       set(hToolsLineCommonVarNonQC,     'callBack', {@displayLineMooringVar, false});
@@ -464,8 +466,9 @@ function mainWindow(...
 
 %% Menu callback
     function displayLinePressDiffs(source,ev, isQC)
-        %DISPLAYLINEMOORINGDEPTH Opens a new window where all the nominal depths and
-        %actual/computed depths from intruments on the mooring are line-plotted.
+        %DISPLAYLINEPRESSDIFFS opens a new window where all the pres_rel
+        %values for instruments adjacent to the current instrument are
+        %displayed with the differences between these instrument pressures
         %
         %check for pres_rel
         iPRel = getVar(sample_data{sampleMenu.Value}.variables, 'PRES_REL');
@@ -475,6 +478,14 @@ function mainWindow(...
         end
 
         lineMooringPresDiffs(sample_data, sampleMenu, isQC, false, '');
+        
+    end
+
+    function displayScatterPlannedDeps(source,ev, isQC)
+        %DISPLAYSCATTERPLANNEDDEPS Opens a new window where the acutal
+        %depths recorded are compared to the planned depths.
+        %
+        scatterMooringPlannedDepths(sample_data, isQC, false, '');
         
     end
 
