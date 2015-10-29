@@ -178,7 +178,7 @@ md = metaDepth(isam);
 sample_data(isam) = [];
 metaDepth(isam) = [];
 [~,iothers] = sort(abs(md - metaDepth));
-iothers = iothers(2:5);
+iothers = iothers(1:4);
 
 %color map
 cMap = hsv(length(iothers));
