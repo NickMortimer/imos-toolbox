@@ -60,6 +60,13 @@ varUnit = imosParameters('DEPTH', 'uom');
 stringQC = 'non QC';
 if isQC, stringQC = 'QC'; end
 
+%Ask for the user to select the region they would like to use for
+%comparison
+%This could be done better, with more finesse - could allow zooming in
+%before going straight to the time period selection. For now, this will do.
+helpdlg('Select the time period for comparison using the mouse','Time Period Selection');
+
+
 %plot depth information
 monitorRec = get(0,'MonitorPosition');
 xResolution = monitorRec(:, 3)-monitorRec(:, 1);
@@ -68,13 +75,64 @@ if sum(iBigMonitor)==2, iBigMonitor(2) = false; end % in case exactly same monit
 
 title = [sample_data{1}.deployment_code ' mooring planned depth vs measured depth ' stringQC '''d good ' varTitle];
 
+%extract the essential data and
 %sort instruments by depth
 lenSampleData = length(sample_data);
 metaDepth = nan(lenSampleData, 1);
 xMin = nan(lenSampleData, 1);
 xMax = nan(lenSampleData, 1);
-iPRel = xMax;
+dataVar = nan(lenSampleData,800000);
+timeVar = dataVar;
 for i=1:lenSampleData
+    %only look at indexes with pres_rel
+    iVar = getVar(sample_data{i}.variables, 'PRES_REL');
+    if iVar==0
+        continue
+    end
+
+    data = sample_data{(i)}.variables{iVar}.data;
+    iTime = getVar(sample_data{i}.dimensions, 'TIME');
+    if isQC
+        iVar = getVar(sample_data{i}.variables, 'DEPTH');
+        data = sample_data{(i)}.variables{iVar}.data;
+        %get time and var QC information
+        timeFlags = sample_data{(i)}.dimensions{iTime}.flags;
+        varFlags = sample_data{(i)}.variables{iVar}.flags;
+        
+        iGood = (timeFlags == 0 | timeFlags == 1 | timeFlags == 2) ...
+            & (varFlags == 1 | varFlags == 2);
+        
+    else
+        %calculate depth
+        iVar = getVar(sample_data{i}.variables,'LATITUDE');
+        if isempty(iVar)
+            disp(['No latitude for instrument serial number ' ...
+                sample_data{i}.instrument_serial_number ', unable to calculate DEPTH'])
+            return
+        end
+        data = -gsw_z_from_p(data, sample_data{i}.variables{iVar}.data);
+        
+        iGood = true(size(data));
+    end
+    
+    
+    if all(~iGood) && isQC
+        fprintf('%s\n', ['Warning : in ' sample_data{(i)}.toolbox_input_file ...
+            ', there is not any ' varName ' data with good flags.']);
+        continue;
+    end
+   
+    %collect the time data too
+    time = sample_data{i}.dimensions{iTime}.data;
+
+    data = data(iGood);
+    time = time(iGood);
+    
+    %save the data into a holding matrix so we don't have to loop over the
+    %sample_data matrix again.
+    dataVar(i,1:length(data)) = data;
+    timeVar(i,1:length(time)) = time;
+    
     if ~isempty(sample_data{i}.meta.depth)
         metaDepth(i) = sample_data{i}.meta.depth;
     elseif ~isempty(sample_data{i}.instrument_nominal_depth)
@@ -82,35 +140,9 @@ for i=1:lenSampleData
     else
         metaDepth(i) = NaN;
     end
-    iTime = getVar(sample_data{i}.dimensions, 'TIME');
-    %check for pres_rel
-    iPRel(i) = getVar(sample_data{i}.variables, 'PRES_REL');
     
-    xMin(i) = min(sample_data{i}.dimensions{iTime}.data);
-    xMax(i) = max(sample_data{i}.dimensions{iTime}.data);
-end
-%only look at indexes with pres_rel
-[metaDepth, iSort] = sort(metaDepth);
-iPRel = iPRel(iSort);
-sample_data = sample_data(iSort);
-iSort(iPRel==0) = []; 
-metaDepth(iPRel==0) = [];
-sample_data(iPRel==0) = [];
-xMin = min(xMin);
-xMax = max(xMax);
-
-%set up some matrices
-instrumentDesc = cell(length(metaDepth), 1);
-hLineVar = nan(length(metaDepth), 1);
-
-initiateFigure = true;
-isPlottable = false;
-
-%color map
-cMap = hsv(length(metaDepth));
-
-%now plot all the calculated depths on one plot to choose region for comparison:
-for i=1:length(metaDepth)
+    xMin(i) = min(time);
+    xMax(i) = max(time);
     % instrument description
     if ~isempty(strtrim(sample_data{(i)}.instrument))
         instrumentDesc{i} = sample_data{(i)}.instrument;
@@ -124,97 +156,60 @@ for i=1:length(metaDepth)
     end
     
     instrumentDesc{i} = [strrep(instrumentDesc{i}, '_', ' ') ' (' num2str(metaDepth((i))) 'm' instrumentSN ')'];
-        
-    %look for time and relevant variable
-    iTime = getVar(sample_data{(i)}.dimensions, 'TIME');
-    if isQC
-        iVar = getVar(sample_data{(i)}.variables, 'DEPTH');
-    else
-        iVar = getVar(sample_data{(i)}.variables, 'PRES_REL');
-    end
-    
-    
-    if initiateFigure
-        %plot
-        fileName = genIMOSFileName(sample_data{i}, 'png');
-        visible = 'on';
-        if saveToFile, visible = 'off'; end
-        hFigPress = figure(...
-            'Name', title, ...
-            'NumberTitle','off', ...
-            'Visible', visible, ...
-            'OuterPosition', [0, 0, monitorRec(iBigMonitor, 3), monitorRec(iBigMonitor, 4)]);
-        
-        %add a button to run the region selection:
-        zone = uicontrol('Style','pushbutton',...
-            'String','Select region',...
-            'Parent',hFigPress,...
-            'Tag','selectzone');
-        
-        %depth plot for selecting region to compare depth to planned depth
-        hAxPress = axes('Parent', hFigPress);
-        set(hAxPress, 'YDir', 'reverse')
-        set(get(hAxPress, 'XLabel'), 'String', 'Time');
-        set(get(hAxPress, 'YLabel'), 'String', ['DEPTH (' varUnit ')'], 'Interpreter', 'none');
-        set(get(hAxPress, 'Title'), 'String', 'Depth', 'Interpreter', 'none');
-        set(hAxPress, 'XTick', (xMin:(xMax-xMin)/4:xMax));
-        set(hAxPress, 'XLim', [xMin, xMax]);
-        hold(hAxPress, 'on');
-        
-        %now plot the data:
-        iGood = true(size(sample_data{(i)}.variables{iVar}.data));
-        XLine = sample_data{(i)}.dimensions{iTime}.data;
-        XLine(~iGood) = NaN;
-        
-        dataVar = sample_data{(i)}.variables{iVar}.data;
-        dataVar(~iGood) = NaN;
-        
-        hLineVar(1) = line(XLine, ...
-            dataVar, ...
-            'Color', cMap(i,:), ...
-            'LineStyle', '-',...
-            'Parent',hAxPress);
-        
-        initiateFigure = false;
-
-    end
-    iGood = true(size(sample_data{(i)}.variables{iVar}.data));
-    
-    if isQC
-        %get time and var QC information
-        timeFlags = sample_data{(i)}.dimensions{iTime}.flags;
-        varFlags = sample_data{(i)}.variables{iVar}.flags;
-        
-        iGood = (timeFlags == 0 | timeFlags == 1 | timeFlags == 2) & (varFlags == 1 | varFlags == 2);
-    end
-    
-    if all(~iGood) && isQC
-        fprintf('%s\n', ['Warning : in ' sample_data{(i)}.toolbox_input_file ...
-            ', there is not any ' varName ' data with good flags.']);
-        continue;
-    else
-        isPlottable = true;
-        
-        xLine = sample_data{(i)}.dimensions{iTime}.data;
-        xLine(~iGood) = NaN;
-        
-        dataVar = sample_data{(i)}.variables{iVar}.data;
-        if isQC
-            %calculate depth
-            dataVar = -gsw_z_from_p(dataVar, sample_data{(i)}.latitude);
-        end
-        dataVar(~iGood) = NaN;
-        
-        %add to the plot
-        hLineVar(i + 1) = line(xLine, ...
-            dataVar, ...
-            'Color', cMap(i, :), ...
-            'LineStyle', '-','Parent',hAxPress);
-                        
-        % set background to be grey
-%         set(hAxPressDiff, 'Color', [0.75 0.75 0.75])
-    end
 end
+%only look at indexes with pres_rel
+[metaDepth, iSort] = sort(metaDepth);
+dataVar = dataVar(iSort,:);
+timeVar = timeVar(iSort,:);
+sample_data = sample_data(iSort);
+instrumentDesc = instrumentDesc(iSort);
+%delete non-pressure instrument information
+ibad = nansum(dataVar,2)==0;
+metaDepth(ibad) = [];
+sample_data(ibad) = [];
+dataVar(ibad,:) = [];
+timeVar(ibad,:) = [];
+instrumentDesc(ibad) = [];
+xMin = min(xMin);
+xMax = max(xMax);
+
+%color map
+cMap = jet(length(metaDepth));
+
+%now plot all the calculated depths on one plot to choose region for comparison:
+%plot
+fileName = genIMOSFileName(sample_data{1}, 'png');
+visible = 'on';
+if saveToFile, visible = 'off'; end
+hFigPress = figure(...
+    'Name', title, ...
+    'NumberTitle','off', ...
+    'Visible', visible, ...
+    'OuterPosition', [0, 0, monitorRec(iBigMonitor, 3), monitorRec(iBigMonitor, 4)]);
+
+%depth plot for selecting region to compare depth to planned depth
+hAxPress = subplot(2,1,1,'Parent', hFigPress);
+set(hAxPress, 'YDir', 'reverse')
+set(get(hAxPress, 'XLabel'), 'String', 'Time');
+set(get(hAxPress, 'YLabel'), 'String', ['DEPTH (' varUnit ')'], 'Interpreter', 'none');
+set(get(hAxPress, 'Title'), 'String', 'Depth', 'Interpreter', 'none');
+set(hAxPress, 'XTick', (xMin:(xMax-xMin)/4:xMax));
+set(hAxPress, 'XLim', [xMin, xMax]);
+hold(hAxPress, 'on');
+
+%now plot the data:Have to do it one at a time to get the colors right..
+for i = 1:length(metaDepth)
+    hLineVar(i) = line(timeVar(i,:), ...
+        dataVar(i,:), ...
+        'Color',cMap(i,:),...
+        'LineStyle', '-',...
+        'Parent',hAxPress);
+end
+isPlottable = true;
+
+% set background to be grey
+%         set(hAxPressDiff, 'Color', [0.75 0.75 0.75])
+
 % Let's redefine properties after pcolor to make sure grid lines appear
 % above color data and XTick and XTickLabel haven't changed
 set(hAxPress, ...
@@ -223,142 +218,46 @@ set(hAxPress, ...
     'YGrid',        'on', ...
     'Layer',        'top');
 
-if isPlottable
-    iNan = isnan(hLineVar);
-    if any(iNan)
-        hLineVar(iNan) = [];
-        instrumentDesc(iNan) = [];
-    end
-        
+if isPlottable    
     datetick(hAxPress, 'x', 'dd-mm-yy HH:MM:SS', 'keepticks');
     
     hLegend = legend(hAxPress, ...
         hLineVar,       instrumentDesc, ...
         'Interpreter',  'none', ...
-        'Location',     'SouthOutside');
+        'Location',     'Best');
     
-    set(hLegend,'Fontsize',14)
+    set(hLegend,'Fontsize',10)
 end
 
-%Ask for the user to select the region they would like to use for
-%comparison
-%This could be done better, with more finesse - could allow zooming in
-%before going straight to the time period selection. For now, this will do.
-helpdlg('Select the time period for comparison using the mouse','Time Period Selection');
-
-zoom off
+%select the area to use for comparison
 [x,y] = select_points;
 
-
-initiateFigure = true;
-
-% Now take the minimum of selected region and compare to planned depths
-for i = 1:length(iSort)
-    %look for time and relevant variable
-    iTime = getVar(sample_data{(i)}.dimensions, 'TIME');
-    if isQC
-        iVar = getVar(sample_data{(i)}.variables, 'DEPTH');
-    else
-        iVar = getVar(sample_data{(i)}.variables, 'PRES_REL');
-    end
-    
-    
-    if initiateFigure
-        %plot
-        fileName = genIMOSFileName(sample_data{i}, 'png');
-        visible = 'on';
-        if saveToFile, visible = 'off'; end
-        hFigPress = figure(...
-            'Name', title, ...
-            'NumberTitle','off', ...
-            'Visible', visible, ...
-            'OuterPosition', [0, 0, monitorRec(iBigMonitor, 3), monitorRec(iBigMonitor, 4)]);
-        
-        %planned Depth vs Actual
-        hAxPress = subplot(2,1,1,'Parent', hFigPress);
-        set(hAxPress, 'YDir', 'reverse')
-        set(get(hAxPress, 'XLabel'), 'String', 'Time');
-        set(get(hAxPress, 'YLabel'), 'String', ['DEPTH (' varUnit ')'], 'Interpreter', 'none');
-        set(get(hAxPress, 'Title'), 'String', 'Depth', 'Interpreter', 'none');
-        set(hAxPress, 'XTick', (xMin:(xMax-xMin)/4:xMax));
-        set(hAxPress, 'XLim', [xMin, xMax]);
-        hold(hAxPress, 'on');
-                
-        %Actual depth minus planned depth
-        hAxPressDiff = subplot(2,1,2,'Parent', hFigPress);
-        set(get(hAxPressDiff, 'XLabel'), 'String', 'Time');
-        set(get(hAxPressDiff, 'YLabel'), 'String', ['PRES_REL (' varUnit ')'], 'Interpreter', 'none');
-        set(get(hAxPressDiff, 'Title'), 'String', ...
-            ['Pressure Differences from ' instrumentDesc{1}] , 'Interpreter', 'none');
-        set(hAxPressDiff, 'XTick', (xMin:(xMax-xMin)/4:xMax));
-        set(hAxPressDiff, 'XLim', [xMin, xMax]);
-        hold(hAxPressDiff, 'on');
-        
-        linkaxes([hAxPressDiff,hAxPress],'x')
-        
-        %now plot the data:
-        iGood = true(size(sample_data{(i)}.variables{iVar}.data));
-        XLine = sample_data{(i)}.dimensions{iTime}.data;
-        XLine(~iGood) = NaN;
-        
-        dataVar = sample_data{(i)}.variables{iVar}.data;
-        if isQC
-            %calculate depth
-            dataVar = -gsw_z_from_p(dataVar, sample_data{(i)}.latitude);
-        end
-        dataVar(~iGood) = NaN;
-        
-        %Limit to the range selected:
-        
-        
-        hLineVar(1) = line(XLine, ...
-            dataVar, ...
-            'Color', 'k', ...
-            'LineStyle', '-',...
-            'Parent',hAxPress);
-        
-        initiateFigure = false;
-
-    end
-    iGood = true(size(sample_data{(i)}.variables{iVar}.data));
-    
-    if isQC
-        %get time and var QC information
-        timeFlags = sample_data{(i)}.dimensions{iTime}.flags;
-        varFlags = sample_data{(i)}.variables{iVar}.flags;
-        
-        iGood = (timeFlags == 0 | timeFlags == 1 | timeFlags == 2) & (varFlags == 1 | varFlags == 2);
-    end
-    
-    if all(~iGood) && isQC
-        fprintf('%s\n', ['Warning : in ' sample_data{(i)}.toolbox_input_file ...
-            ', there is not any ' varName ' data with good flags.']);
-        continue;
-    else
-        isPlottable = true;
-        
-        xLine = sample_data{(i)}.dimensions{iTime}.data;
-        xLine(~iGood) = NaN;
-        
-        dataVar = sample_data{(i)}.variables{iVar}.data;
-        if isQC
-            %calculate depth
-            dataVar = -gsw_z_from_p(dataVar, sample_data{(i)}.latitude);
-        end
-        dataVar(~iGood) = NaN;
-        
-        %add to the plot
-        hLineVar(i + 1) = line(xLine, ...
-            dataVar, ...
-            'Color', cMap(i, :), ...
-            'LineStyle', '-','Parent',hAxPress);
-                        
-        % set background to be grey
-%         set(hAxPressDiff, 'Color', [0.75 0.75 0.75])
-    end
+%Actual depth minus planned depth
+hAxDepthDiff = subplot(2,1,2,'Parent', hFigPress);
+set(get(hAxDepthDiff, 'XLabel'), 'String', 'Planned Depth (m)');
+set(get(hAxDepthDiff, 'YLabel'), 'String', ['Actual Depth - Planned Depth (' varUnit ')'], 'Interpreter', 'none');
+set(get(hAxDepthDiff, 'Title'), 'String', ...
+    ['Differences from planned depth for ' sample_data{1}.meta.site_name] , 'Interpreter', 'none');
+hold(hAxDepthDiff, 'on');
+grid(hAxDepthDiff, 'on');
 
 
-end   
+%now plot the difference from planned depth data:
+iGood = timeVar >= x(1) & timeVar <= x(2);
+dataVar(~iGood) = NaN;
+minDep = min(dataVar,[],2);
+
+hLineVar2 = line(metaDepth, ...
+    minDep - metaDepth, ...
+    'Color','k',...
+    'LineStyle', 'None',...
+    'Marker','o',...
+    'Marker','.',...
+    'MarkerSize',12,...
+    'Parent',hAxDepthDiff);
+
+text(metaDepth + 1, (minDep - metaDepth), instrumentDesc, ...
+    'Parent', hAxDepthDiff)
         
 if isPlottable
     if saveToFile
