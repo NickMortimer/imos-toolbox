@@ -8,7 +8,6 @@ function sample_data = readXR420( filename, mode )
 %
 % Inputs:
 %   filename    - Cell array containing the name of the file to parse.
-%   mode        - Toolbox data type mode ('profile' or 'timeSeries').
 %
 % Outputs:
 %   sample_data - Struct containing imported sample data.
@@ -45,7 +44,7 @@ function sample_data = readXR420( filename, mode )
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 % POSSIBILITY OF SUCH DAMAGE.
 %
-  narginchk(2,2);
+  narginchk(1,2);
   
   if ~ischar(filename)  
     error('filename must be a string'); 
@@ -74,7 +73,6 @@ function sample_data = readXR420( filename, mode )
   sample_data.meta.instrument_serial_no = header.serial;
   sample_data.meta.instrument_sample_interval = median(diff(data.time*24*3600));
   sample_data.meta.correction           = header.correction;
-  sample_data.meta.featureType          = mode;
   
   if isfield(header, 'correction'),             sample_data.meta.correction             = header.correction; end
   if isfield(header, 'averaging_time_period'),  sample_data.meta.averaging_time_period  = header.averaging_time_period; end

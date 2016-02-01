@@ -73,11 +73,17 @@ function qc_data = autoQCManager( sample_data, auto )
   qcRoutines = listAutoQCRoutines();
   qcChain    = {};
 
-  % get last filter chain if there is one
+  % get default filter chain if there is one
   try
       % get the toolbox execution mode. Values can be 'timeSeries' and 'profile'. 
-      mode = readProperty('toolbox.mode');
-      qcChain = textscan(readProperty(['autoQCManager.autoQCChain.' mode]), '%s');
+      % If no value is set then default mode is 'timeSeries'
+      mode = lower(readProperty('toolbox.mode'));
+      switch mode
+          case 'profile'
+              qcChain = textscan(readProperty('autoQCManager.autoQCChain.profile'), '%s');
+          otherwise
+              qcChain = textscan(readProperty('autoQCManager.autoQCChain.timeSeries'), '%s');
+      end
       qcChain = qcChain{1};
   catch e
   end
@@ -88,19 +94,27 @@ function qc_data = autoQCManager( sample_data, auto )
     % selected options is stored in toolboxProperties as routine names, 
     % but must be provided to the list selection dialog as indices
     qcChain = cellfun(@(x)(find(ismember(qcRoutines,x))),qcChain);
-    [qcChain, qcCancel] = listSelectionDialog('Select QC routines', ...
-        qcRoutines, qcChain, ...
-        {@routineConfig, 'Configure routine';
-        @setDefaultRoutines, 'Default set'});
+    [qcChain, qcCancel] = listSelectionDialog('Select QC filters', qcRoutines, ...
+                                  qcChain, @filterConfig, 'Configure');
     
 	% save user's latest selection for next time - turn the qcChain
     % cell array into a space-separated string of the names
     if ~isempty(qcChain)
         qcChainStr = cellfun(@(x)([x ' ']), qcChain, 'UniformOutput', false);
-        writeProperty(['autoQCManager.autoQCChain.' mode], deblank([qcChainStr{:}]));
+        switch mode
+            case 'profile'
+                writeProperty('autoQCManager.autoQCChain.profile', deblank([qcChainStr{:}]));
+            otherwise
+                writeProperty('autoQCManager.autoQCChain.timeSeries', deblank([qcChainStr{:}]));
+        end
     else
         if ~qcCancel
-            writeProperty(['autoQCManager.autoQCChain.' mode], '');
+            switch mode
+                case 'profile'
+                    writeProperty('autoQCManager.autoQCChain.profile', '');
+                otherwise
+                    writeProperty('autoQCManager.autoQCChain.timeSeries', '');
+            end
         end
     end
     
@@ -197,49 +211,20 @@ function qc_data = autoQCManager( sample_data, auto )
   qc_data = sample_data;
 end
 
-%ROUTINECONFIG Called via the QC routine list selection dialog when the user
-% chooses to configure a routine. If the selected routine has any configurable 
+%FILTERCONFIG Called via the QC filter list selection dialog when the user
+% chooses to configure a filter. If the selected filter has any configurable 
 % options, a propertyDialog is displayed, allowing the user to configure
-% the routine.
+% the filter.
 %
-function [dummy1, dummy2] = routineConfig(routineName)
+function filterConfig(filterName)
 
-  dummy1 = {};
-  dummy2 = {};
-
-  % check to see if the routine has an associated properties file.
-  propFileName = fullfile('AutomaticQC', [routineName '.txt']);
+  % check to see if the filter has an associated properties file.
+  propFileName = fullfile('AutomaticQC', [filterName '.txt']);
   
-  % ignore if there is no properties file for this routine
+  % ignore if there is no properties file for this filter
   if ~exist(propFileName, 'file'), return; end
   
-  % display a propertyDialog, allowing configuration of the routine
+  % display a propertyDialog, allowing configuration of the filter
   % properties.
   propertyDialog(propFileName);
-end
-
-%SETDEFAULTROUTINES Called via the QC routine list selection dialog when the user
-% chooses to set the list of routines to default.
-%
-function [qcRoutines, qcChain] = setDefaultRoutines(filterName)
-
-  % get all QC routines that exist
-  qcRoutines = listAutoQCRoutines();
-  qcChain    = {};
-  
-  % get the toolbox execution mode. Values can be 'timeSeries' and 'profile'. 
-  % If no value is set then default mode is 'timeSeries'
-  mode = readProperty('toolbox.mode');
-  
-  % get default filter chain if there is one
-  try
-      qcChain = textscan(readProperty(['autoQCManager.autoQCDefaultChain.' mode]), '%s');
-      qcChain = qcChain{1};
-      
-      % set last filter list to default
-      qcChainStr = cellfun(@(x)([x ' ']), qcChain, 'UniformOutput', false);
-      writeProperty(['autoQCManager.autoQCChain.' mode], deblank([qcChainStr{:}]));
-  catch e
-  end
-  
 end

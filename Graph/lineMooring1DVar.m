@@ -81,26 +81,9 @@ for i=1:lenSampleData
     else
         metaDepth(i) = NaN;
     end
-    
     iTime = getVar(sample_data{i}.dimensions, 'TIME');
-    iVar = getVar(sample_data{i}.variables, varName);
-    iGood = true(size(sample_data{i}.dimensions{iTime}.data));
-        
-    if isQC && iVar
-        %get time and var QC information
-        timeFlags = sample_data{i}.dimensions{iTime}.flags;
-        varFlags = sample_data{i}.variables{iVar}.flags;
-        
-        iGood = (timeFlags == 1 | timeFlags == 2) & (varFlags == 1 | varFlags == 2);
-    end
-    
-    if iVar
-        if all(~iGood)
-            continue;
-        end
-        xMin(i) = min(sample_data{i}.dimensions{iTime}.data(iGood));
-        xMax(i) = max(sample_data{i}.dimensions{iTime}.data(iGood));
-    end
+    xMin(i) = min(sample_data{i}.dimensions{iTime}.data);
+    xMax(i) = max(sample_data{i}.dimensions{iTime}.data);
 end
 [metaDepth, iSort] = sort(metaDepth);
 xMin = min(xMin);
@@ -138,7 +121,7 @@ for i=1:lenSampleData
     iVar = getVar(sample_data{iSort(i)}.variables, varName);
     
     if iVar > 0 && size(sample_data{iSort(i)}.variables{iVar}.data, 2) == 1 && ... % we're only plotting 1D variables but no current
-            all(~strcmpi(sample_data{iSort(i)}.variables{iVar}.name, {'UCUR', 'VCUR', 'WCUR', 'CDIR', 'CSPD', 'VEL1', 'VEL2', 'VEL3'}))        
+            all(~strcmpi(sample_data{iSort(i)}.variables{iVar}.name, {'UCUR', 'VCUR', 'WCUR', 'CDIR', 'CSPD', 'VEL1', 'VEL2', 'VEL3'}))
         if initiateFigure
             fileName = genIMOSFileName(sample_data{iSort(i)}, 'png');
             visible = 'on';
@@ -169,7 +152,7 @@ for i=1:lenSampleData
             hLineVar(1) = line([xMin, xMax], [metaDepth(i), metaDepth(i)], ...
                 'Color', 'black');
         end
-        
+            
         iGood = true(size(sample_data{iSort(i)}.variables{iVar}.data));
         
         if isQC
@@ -177,7 +160,7 @@ for i=1:lenSampleData
             timeFlags = sample_data{iSort(i)}.dimensions{iTime}.flags;
             varFlags = sample_data{iSort(i)}.variables{iVar}.flags;
             
-            iGood = (timeFlags == 1 | timeFlags == 2) & (varFlags == 1 | varFlags == 2);
+            iGood = (timeFlags == 0 | timeFlags == 1 | timeFlags == 2) & (varFlags == 1 | varFlags == 2);
         end
         
         if all(~iGood) && isQC
@@ -234,23 +217,23 @@ if ~initiateFigure && isPlottable
     if nLine > 2
         nLine1 = ceil(nLine/2);
         
-        hLegend(1) = multipleLegend(hAxMooringVar, ...
-            hLineVar(1:nLine1), instrumentDesc(1:nLine1), ...
-            'Interpreter',      'none', ...
-            'Location',         'SouthOutside');
-        hLegend(2) = multipleLegend(hAxMooringVar, ...
-            hLineVar(nLine1+1:nLine),   instrumentDesc(nLine1+1:nLine), ...
-            'Interpreter',              'none', ...
-            'Location',                 'SouthOutside');
+%         hLegend(1) = multipleLegend(hAxMooringVar, ...
+%             hLineVar(1:nLine1), instrumentDesc(1:nLine1), ...
+%             'Interpreter',      'none', ...
+%             'Location',         'SouthOutside');
+%         hLegend(2) = multipleLegend(hAxMooringVar, ...
+%             hLineVar(nLine1+1:nLine),   instrumentDesc(nLine1+1:nLine), ...
+%             'Interpreter',              'none', ...
+%             'Location',                 'SouthOutside');
         
         posAx = get(hAxMooringVar, 'Position');
         
-        pos1 = get(hLegend(1), 'Position');
-        pos2 = get(hLegend(2), 'Position');
-        maxWidth = max(pos1(3), pos2(3));
+%         pos1 = get(hLegend(1), 'Position');
+%         pos2 = get(hLegend(2), 'Position');
+%         maxWidth = max(pos1(3), pos2(3));
 
-        set(hLegend(1), 'Position', [posAx(1), pos1(2), pos1(3), pos1(4)]);
-        set(hLegend(2), 'Position', [posAx(3) - maxWidth/2, pos1(2), pos2(3), pos2(4)]);
+%         set(hLegend(1), 'Position', [posAx(1), pos1(2), pos1(3), pos1(4)]);
+%         set(hLegend(2), 'Position', [posAx(3) - maxWidth/2, pos1(2), pos2(3), pos2(4)]);
         
         % set position on legends above modifies position of axis so we
         % re-initialise it

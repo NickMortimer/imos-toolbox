@@ -122,8 +122,8 @@ end
 % http://www.nortek-as.com/en/knowledge-center/forum/hr-profilers/736804717
 %
 freq       = head.Frequency; % this is in KHz
-blankDist  = user.T2;        % counts
-cellSize   = user.BinLength; % counts
+cellStart  = user.T2;        % counts
+cellLength = user.BinLength; % counts
 factor     = 0;              % used for conversion
 
 switch freq
@@ -133,18 +133,18 @@ switch freq
   case 2000, factor = 0.0239;
 end
 
-cellSize   = (cellSize / 256) * factor * cos(25 * pi / 180);
-blankDist  = blankDist        * 0.0229 * cos(25 * pi / 180) - cellSize;
+cellLength = (cellLength / 256) * factor * cos(25 * pi / 180);
+cellStart  =  cellStart         * 0.0229 * cos(25 * pi / 180) - cellLength;
 
 % generate distance values
-distance(:) = (blankDist):  ...
-           (cellSize): ...
-           (blankDist + (ncells-1) * cellSize);
+distance(:) = (cellStart):  ...
+           (cellLength): ...
+           (cellStart + (ncells-1) * cellLength);
 
 % Note this is actually the distance between the ADCP's transducers and the
 % middle of each cell
 % See http://www.nortek-bv.nl/en/knowledge-center/forum/current-profilers-and-current-meters/579860330
-distance = distance + cellSize;
+distance = distance + cellLength;
        
 % retrieve sample data
 time            = structures.(profilerType).Time';
@@ -231,11 +231,11 @@ end
 sample_data = struct;
     
 sample_data.toolbox_input_file              = filename;
-sample_data.meta.featureType                = ''; % strictly this dataset cannot be described as timeSeriesProfile since it also includes timeSeries data like TEMP
+sample_data.meta.featureType                = 'timeSeriesProfile';
 sample_data.meta.head                       = head;
 sample_data.meta.hardware                   = hardware;
 sample_data.meta.user                       = user;
-sample_data.meta.binSize                    = cellSize;
+sample_data.meta.binSize                    = cellLength;
 sample_data.meta.instrument_make            = 'Nortek';
 sample_data.meta.instrument_model           = 'Aquadopp Profiler';
 sample_data.meta.instrument_serial_no       = hardware.SerialNo;

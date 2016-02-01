@@ -62,6 +62,6 @@ function sample_data = ECOTripletParse( filename, mode )
   
   deviceInfo = readECODevice(devFilename);
   
-  sample_data = readECOraw(filename, deviceInfo, mode);
+  sample_data = readECOraw(filename, deviceInfo);
 
 end
