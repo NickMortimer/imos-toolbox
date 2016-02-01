@@ -54,28 +54,30 @@ function [fieldTrip dataDir] = startDialog(mode,isCSV)
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 % POSSIBILITY OF SUCH DAMAGE.
 %
-<<<<<<< HEAD
   error(nargchk(2,2,nargin));
-=======
-  narginchk(1,1);
->>>>>>> aodn/master
   
+  dataDir     = pwd;
+  fieldTripId = '1';
+  lowDate     = 0;
+  highDate    = now_utc;
   dateFmt     = readProperty('toolbox.dateFormat');
     
-  % if values exist for data dir and field trip, use them
-  switch mode
-      case 'profile'
-          dataDir     =            readProperty('startDialog.dataDir.profile');
-          fieldTripId =            readProperty('startDialog.fieldTrip.profile');
-          lowDate     = str2double(readProperty('startDialog.lowDate.profile'));
-          highDate    = str2double(readProperty('startDialog.highDate.profile'));
-      otherwise
-          dataDir     =            readProperty('startDialog.dataDir.timeSeries');
-          fieldTripId =            readProperty('startDialog.fieldTrip.timeSeries');
-          lowDate     = str2double(readProperty('startDialog.lowDate.timeSeries'));
-          highDate    = str2double(readProperty('startDialog.highDate.timeSeries'));
+  % if default values exist for data dir and field trip, use them
+  try 
+      switch mode
+          case 'profile'
+              dataDir     =            readProperty('startDialog.dataDir.profile');
+              fieldTripId =            readProperty('startDialog.fieldTrip.profile');
+              lowDate     = str2double(readProperty('startDialog.lowDate.profile'));
+              highDate    = str2double(readProperty('startDialog.highDate.profile'));
+          otherwise
+              dataDir     =            readProperty('startDialog.dataDir.timeSeries');
+              fieldTripId =            readProperty('startDialog.fieldTrip.timeSeries');
+              lowDate     = str2double(readProperty('startDialog.lowDate.timeSeries'));
+              highDate    = str2double(readProperty('startDialog.highDate.timeSeries'));
+      end
+  catch
   end
-<<<<<<< HEAD
   
   if isnan(lowDate),  lowDate  = 0;   end
   if isnan(highDate), highDate = now_utc; end
@@ -86,15 +88,6 @@ function [fieldTrip dataDir] = startDialog(mode,isCSV)
       func = @executeDDBQuery;
   end
   
-=======
-
-  % otherwise use default values
-  if isempty(dataDir),      dataDir = pwd;      end
-  if isempty(fieldTripId),  fieldTripId = '1';  end
-  if isnan(lowDate),        lowDate  = 0;       end
-  if isnan(highDate),       highDate = now_utc; end
-
->>>>>>> aodn/master
   % retrieve all field trip IDs; they are displayed as a drop down menu
   fieldTrips = func('FieldTrip', [], []);
   
