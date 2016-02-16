@@ -48,7 +48,7 @@ autoQCManager.autoQCChain.profile = imosImpossibleDateQC imosImpossibleLocationS
 preprocessManager.preprocessPrompt = true
 
 % default set of preprocessing routines
-preprocessManager.preprocessChain.timeSeries = timeDriftPP salinityPP rdiBinMappingVelocityPP magneticDeclinationPP depthPP
+preprocessManager.preprocessChain.timeSeries = timeDriftPP salinityPP magneticDeclinationPP depthPP pressureRelPP
 preprocessManager.preprocessChain.profile = depthPP salinityPP
 
 % file status dialog formatting styles
