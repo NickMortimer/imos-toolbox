@@ -104,10 +104,8 @@ function [sample_data, cancel] = preprocessManager( sample_data, qcLevel, mode, 
       % routine names, but must be provided to the list selection dialog
       % as indices
       ppChainIdx = cellfun(@(x)(find(ismember(ppRoutines,x))),ppChain);
-      [ppChain, cancel] = listSelectionDialog('Select Preprocess routines', ...
-          ppRoutines, ppChainIdx, ...
-          {@routineConfig, 'Configure routine';
-          @setDefaultRoutines, 'Default set'});
+      [ppChain, cancel] = listSelectionDialog(...
+          'Select Preprocess routines', ppRoutines, ppChainIdx);
       
       % user cancelled dialog
       if isempty(ppChain) || cancel, return; end
@@ -162,55 +160,4 @@ function [sample_data, cancel] = preprocessManager( sample_data, qcLevel, mode, 
   end
 
   if ~auto && ~isempty(ppChain), delete(progress); end
-end
-
-%ROUTINECONFIG Called via the PP routine list selection dialog when the user
-% chooses to configure a routine. If the selected routine has any configurable 
-% options, a propertyDialog is displayed, allowing the user to configure
-% the routine.
-%
-function [dummy1, dummy2] = routineConfig(routineName)
-
-  dummy1 = {};
-  dummy2 = {};
-  
-  % check to see if the routine has an associated properties file.
-  propFileName = fullfile('Preprocessing', [routineName '.txt']);
-  
-  % ignore if there is no properties file for this routine
-  if ~exist(propFileName, 'file'), return; end
-  
-  % display a propertyDialog, allowing configuration of the routine
-  % properties.
-  if strcmpi(routineName, 'depthPP')
-      propertyDialog(propFileName, ',');
-  else
-      propertyDialog(propFileName);
-  end
-end
-
-%SETDEFAULTROUTINES Called via the PP routine list selection dialog when the user
-% chooses to set the list of routines to default.
-%
-function [ppRoutines, ppChain] = setDefaultRoutines(filterName)
-
-  % get all PP routines that exist
-  ppRoutines = listPreprocessRoutines();
-  ppChain    = {};
-  
-  % get the toolbox execution mode. Values can be 'timeSeries' and 'profile'. 
-  % If no value is set then default mode is 'timeSeries'
-  mode = readProperty('toolbox.mode');
-  
-  % get default filter chain if there is one
-  try
-      ppChain = textscan(readProperty(['preprocessManager.preprocessDefaultChain.' mode]), '%s');
-      ppChain = ppChain{1};
-      
-      % set last filter list to default
-      qcChainStr = cellfun(@(x)([x ' ']), ppChain, 'UniformOutput', false);
-      writeProperty(['preprocessManager.preprocessChain.' mode], deblank([qcChainStr{:}]));
-  catch e
-  end
-  
 end

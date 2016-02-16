@@ -1,11 +1,10 @@
-function sample_data = readECOraw( filename, deviceInfo, mode )
+function sample_data = readECOraw( filename, deviceInfo )
 %READECORAW parses a .raw data file retrieved from a Wetlabs ECO Triplet instrument.
 %
 %
 % Inputs:
 %   filename    - name of the input file to be parsed
 %   deviceInfo  - infos retrieved from the relevant device file
-%   mode        - Toolbox data type mode ('profile' or 'timeSeries').
 %
 % Outputs:
 %   sample_data - contains a time vector (in matlab numeric format), and a 
@@ -46,8 +45,8 @@ function sample_data = readECOraw( filename, deviceInfo, mode )
 % POSSIBILITY OF SUCH DAMAGE.
 %
 
-% ensure that there are exactly three arguments
-narginchk(3, 3);
+% ensure that there is exactly one argument
+narginchk(2, 2);
 if ~ischar(filename), error('filename must contain a string'); end
 if ~isstruct(deviceInfo), error('deviceInfo must contain a struct'); end
 
@@ -196,7 +195,6 @@ sample_data.toolbox_input_file        = filename;
 sample_data.meta.instrument_make      = 'WET Labs';
 sample_data.meta.instrument_model     = deviceInfo.instrument;
 sample_data.meta.instrument_serial_no = deviceInfo.serial;
-sample_data.meta.featureType          = mode;
 
 % convert and save the time data
 time = datenum(samples{1}, 'mm/dd/yy') + ...

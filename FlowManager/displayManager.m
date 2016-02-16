@@ -246,7 +246,6 @@ function displayManager(windowTitle, sample_data, callbacks)
       vars(vars > nVar) = [];
     
       % display selected raw data
-      graphs = [];
       try
         graphFunc = getGraphFunc(graphType, 'graph', '');
         [graphs lines vars] = graphFunc(panel, sample_data{setIdx}, vars);
@@ -262,11 +261,9 @@ function displayManager(windowTitle, sample_data, callbacks)
       
       % save line handles and index in axis userdata 
       % so the data select callback can retrieve them
-      if ~isempty(graphs)
-          for k = 1:length(graphs)
-              
-              set(graphs(k), 'UserData', {lines(k), k});
-          end
+      for k = 1:length(graphs)
+        
+        set(graphs(k), 'UserData', {lines(k), k});
       end
       
       % add data selection functionality

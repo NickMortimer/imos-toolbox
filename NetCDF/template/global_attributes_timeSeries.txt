@@ -16,7 +16,7 @@ S, references                   = http://www.imos.org.au
 S, site_code                    = 
 S, platform_code                = 
 S, deployment_code              = [ddb Site]
-S, featureType                  = [mat sample_data.meta.featureType]
+S, featureType                  = [mat updateIfEmpty('[mat sample_data.meta.featureType]', 'timeSeries')]
 S, cdm_data_type                = Station
 S, naming_authority             = IMOS
 S, metadata                     = 
@@ -41,7 +41,7 @@ N, geospatial_lat_max       = [ddb Site Sites Latitude]
 N, geospatial_lon_min       = [ddb Site Sites Longitude]
 N, geospatial_lon_max       = [ddb Site Sites Longitude]
 N, instrument_nominal_height= 
-N, instrument_nominal_depth = 
+N, instrument_nominal_depth = [mat sample_data.meta.deployment.InstrumentNominalDepth]
 N, site_nominal_depth       = 
 N, site_depth_at_deployment = 
 

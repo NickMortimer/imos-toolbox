@@ -257,13 +257,11 @@ function mainWindow(...
   zoomoutb = findobj(buttons, 'TooltipString', 'Zoom Out');
   zoominb  = findobj(buttons, 'TooltipString', 'Zoom In');
   panb     = findobj(buttons, 'TooltipString', 'Pan');
-  datacursorb     = findobj(buttons, 'TooltipString', 'Data Cursor');
   
-  buttons(buttons == tb)            = [];
-  buttons(buttons == zoomoutb)      = [];
-  buttons(buttons == zoominb)       = [];
-  buttons(buttons == panb)          = [];
-  buttons(buttons == datacursorb)   = [];
+  buttons(buttons == tb)       = [];
+  buttons(buttons == zoomoutb) = [];
+  buttons(buttons == zoominb)  = [];
+  buttons(buttons == panb)     = [];
   
   delete(buttons);
   
@@ -277,6 +275,8 @@ function mainWindow(...
   %set uimenu
   hToolsMenu                        = uimenu(fig, 'label', 'Tools');
   if strcmpi(mode, 'timeseries')
+      hToolsLinePressDiffs          = uimenu(hToolsMenu, 'label', 'Plot Pressure differences');
+      hToolsScatterPlannedDeps      = uimenu(hToolsMenu, 'label', 'Check measured against planned Depths');
       hToolsLineDepth               = uimenu(hToolsMenu, 'label', 'Line plot mooring''s depths');
       hToolsLineDepthNonQC          = uimenu(hToolsLineDepth, 'label', 'non QC');
       hToolsLineDepthQC             = uimenu(hToolsLineDepth, 'label', 'QC');
@@ -291,6 +291,8 @@ function mainWindow(...
       hToolsScatter2DCommonVarQC    = uimenu(hToolsScatter2DCommonVar, 'label', 'QC');
       
       %set menu callbacks
+      set(hToolsLinePressDiffs,         'callBack', {@displayLinePressDiffs, false});
+      set(hToolsScatterPlannedDeps,     'callBack', {@displayScatterPlannedDeps, false});
       set(hToolsLineDepthNonQC,         'callBack', {@displayLineMooringDepth, false});
       set(hToolsLineDepthQC,            'callBack', {@displayLineMooringDepth, true});
       set(hToolsLineCommonVarNonQC,     'callBack', {@displayLineMooringVar, false});
@@ -344,10 +346,6 @@ function mainWindow(...
       sample_data, ...
       graph, ...
       sam.meta.index, vars);
-  
-    % set data cursor mode custom display
-    dcm_obj = datacursormode(fig);
-    set(dcm_obj, 'UpdateFcn', {@customDcm, sam, vars, graph, mode});
   end
   
   function sampleMenuCallback(source,ev)
@@ -466,8 +464,32 @@ function mainWindow(...
     end
   end
 
-  %% Menu callback
-  function displayLineMooringDepth(source,ev, isQC)
+%% Menu callback
+    function displayLinePressDiffs(source,ev, isQC)
+        %DISPLAYLINEPRESSDIFFS opens a new window where all the pres_rel
+        %values for instruments adjacent to the current instrument are
+        %displayed with the differences between these instrument pressures
+        %
+        %check for pres_rel
+        iPRel = getVar(sample_data{sampleMenu.Value}.variables, 'PRES_REL');
+        if iPRel == 0
+            disp(['No pressure data for ' char(sampleMenu.String(sampleMenu.Value))])
+            return
+        end
+
+        lineMooringPresDiffs(sample_data, sampleMenu, isQC, false, '');
+        
+    end
+
+    function displayScatterPlannedDeps(source,ev, isQC)
+        %DISPLAYSCATTERPLANNEDDEPS Opens a new window where the acutal
+        %depths recorded are compared to the planned depths.
+        %
+        scatterMooringPlannedDepths(sample_data, isQC, false, '');
+        
+    end
+
+    function displayLineMooringDepth(source,ev, isQC)
   %DISPLAYLINEMOORINGDEPTH Opens a new window where all the nominal depths and
   %actual/computed depths from intruments on the mooring are line-plotted.
   %
@@ -844,78 +866,4 @@ end
     % easy to retrieve in the getSelectedVars function
     set(varPanel, 'UserData', checkboxes);
   end
-
-    function txt = customDcm(~, event_obj, sam, vars, graph, mode)
-        % Customizes text of data tips
-        switch mode
-            case 'profile'
-                % we don't want to plot TIME, PROFILE, DIRECTION, LATITUDE, LONGITUDE, BOT_DEPTH
-                varOffset = getVar(sam.variables, 'BOT_DEPTH');
-            otherwise
-                % we don't want to plot TIMESERIES, PROFILE, TRAJECTORY, LATITUDE, LONGITUDE, NOMINAL_DEPTH
-                varOffset = getVar(sam.variables, 'NOMINAL_DEPTH');
-        end
-        
-        % retrieve x/y click positions + data index
-        posClic = get(event_obj, 'Position');
-        I       = get(event_obj, 'DataIndex');
-        
-        switch graph
-            case 'Profile'
-                dimLabel = 'DEPTH';
-                dimUnit  = ' m';
-                dimFun = @num2str;
-            case 'TimeSeries'
-                dimLabel = 'TIME';
-                dimUnit  = ' UTC';
-                dimFun = @datestr;
-            otherwise
-                error(['graph type ' graph ' not supported']);
-        end
-        
-        iDim = getVar(sam.dimensions, dimLabel);
-        nRecord = length(sam.dimensions{iDim}.data);
-        
-        nVar = length(vars);
-        txt = cell(1, nVar+1);
-        txt{1} = [dimLabel ': ' dimFun(posClic(1)) dimUnit];
-        for iVar=1:nVar
-            iVarCorr  = vars(iVar)+varOffset;
-            varLabel  = sam.variables{iVarCorr}.name;
-            varUnit   = [' ' sam.variables{iVarCorr}.units];
-            
-            nSample   = numel(sam.variables{iVarCorr}.data);
-            iSample   = I;
-            zInfo = '';
-            if I < nRecord && nSample > nRecord
-                % we've clicked on a 1D plot so don't want to display
-                % information from 2D plots
-                txt{iVar+1} = [];
-                continue;
-            else
-                % we've clicked on a 2D plot
-                nDim = sam.variables{iVarCorr}.dimensions;
-                if nDim==1
-                    % and are dealing with a 1D info
-                    iSample = sam.dimensions{iDim}.data == posClic(1);
-                else
-                    % and are dealing with a 2D info
-                    iZ = sam.variables{iVarCorr}.dimensions(2);
-                    nZ = length(sam.dimensions{iZ}.data);
-                    iSample = repmat(sam.dimensions{iDim}.data == posClic(1), 1, nZ) & repmat((sam.dimensions{iZ}.data == posClic(2))', nRecord, 1);
-                    
-                    zLabel = sam.dimensions{iZ}.name;
-                    zUnit  = [' ' sam.dimensions{iZ}.units];
-                    zData  = num2str(posClic(2));
-                    zInfo  = [' @' zLabel ': ' zData zUnit];
-                end
-            end
-            varData   = num2str(sam.variables{iVarCorr}.data(iSample));
-            
-            txt{iVar+1} = [varLabel ': ' varData varUnit zInfo];
-        end
-        
-        % clean up empty cells
-        txt(cellfun(@isempty, txt)) = [];
-    end
 end

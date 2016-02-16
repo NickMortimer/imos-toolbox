@@ -85,7 +85,7 @@ function sample_data = timeOffsetPP(sample_data, qcLevel, auto)
     
     if isnan(str2double(timezones{k}))
         try
-            offsets(k) = str2double(readProperty(timezones{k}, offsetFile));
+            offsets(k) = str2double(readProperty(timezones{k}, offsetFile, ','));
         catch
             if strncmpi(timezones{k}, 'UTC', 3)
                 offsetStr = timezones{k}(4:end);
@@ -143,7 +143,7 @@ function sample_data = timeOffsetPP(sample_data, qcLevel, auto)
       set(timezoneLabels, 'Units', 'normalized');
       set(offsetFields,   'Units', 'normalized');
       
-      set(f,             'Position', [0.2 0.35 0.6 0.3]);
+      set(f,             'Position', [0.2 0.35 0.6 0.5]);
       set(cancelButton,  'Position', [0.0 0.0  0.5 0.1]);
       set(confirmButton, 'Position', [0.5 0.0  0.5 0.1]);
       
