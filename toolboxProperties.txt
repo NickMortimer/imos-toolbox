@@ -40,7 +40,7 @@ exportNetCDF.dateFormat = yyyy-mm-ddTHH:MM:SSZ
 exportNetCDF.fileDateFormat = yyyymmddTHHMMSSZ
 
 % default set of auto QC routines
-autoQCManager.autoQCChain.timeSeries = imosSideLobeVelocitySetQC imosInOutWaterQC imosSalinityFromPTQC imosImpossibleDateQC imosImpossibleDepthQC imosEchoIntensityVelocitySetQC imosErrorVelocitySetQC imosCorrMagVelocitySetQC
+autoQCManager.autoQCChain.timeSeries = imosSideLobeVelocitySetQC imosInOutWaterQC imosSalinityFromPTQC imosImpossibleDateQC imosEchoIntensityVelocitySetQC imosErrorVelocitySetQC imosCorrMagVelocitySetQC imosImpossibleDepthQC
 autoQCManager.autoQCChain.profile = imosImpossibleDateQC imosImpossibleLocationSetQC imosInOutWaterQC imosGlobalRangeQC imosImpossibleDepthQC imosSalinityFromPTQC imosHistoricalManualSetQC
 
 % prompt for preprocessing (if false, 
