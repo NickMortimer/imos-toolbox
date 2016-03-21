@@ -196,7 +196,7 @@ if strcmpi(ext, '.cnv')
     end
 else
     % use the classic SBE3x ASCII format suggested for IMOS
-    sample_data = SBE3x(filename);
+    sample_data = SBE3x(filename, mode);
 end
 
 end
